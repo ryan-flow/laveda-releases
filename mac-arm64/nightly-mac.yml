@@ -1,12 +1,12 @@
 {
-  "version": "0.1.7-rc.2.20261009.3",
+  "version": "0.1.7-rc.2.20261009.5",
   "files": [
     {
-      "url": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.3/laveda-touliu-0.1.7-rc.2.20261009.3-mac-arm64-unsigned.zip",
-      "sha512": "uLnKbPK1dfDOFmqfldYURs4aSYFxWLGhaekffqDgGxVBfefrDGxneIQjWKxo/xcxS8ZxO/6FPIhJLixM0cxlcg==",
-      "size": 419716006
+      "url": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.5/laveda-touliu-0.1.7-rc.2.20261009.5-mac-arm64-unsigned.zip",
+      "sha512": "cEL/ZT2WXVzyeBqLK+dWcfVsaA7B1u8SwJaJah4InrhYpDqP0u+Iwqe7QTqwPlOEGW7fm3FuTs2eEU89xBdvjQ==",
+      "size": 419714418
     }
   ],
-  "path": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.3/laveda-touliu-0.1.7-rc.2.20261009.3-mac-arm64-unsigned.zip",
-  "sha512": "uLnKbPK1dfDOFmqfldYURs4aSYFxWLGhaekffqDgGxVBfefrDGxneIQjWKxo/xcxS8ZxO/6FPIhJLixM0cxlcg=="
+  "path": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.5/laveda-touliu-0.1.7-rc.2.20261009.5-mac-arm64-unsigned.zip",
+  "sha512": "cEL/ZT2WXVzyeBqLK+dWcfVsaA7B1u8SwJaJah4InrhYpDqP0u+Iwqe7QTqwPlOEGW7fm3FuTs2eEU89xBdvjQ=="
 }

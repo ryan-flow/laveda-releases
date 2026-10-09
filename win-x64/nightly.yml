@@ -1,12 +1,12 @@
 {
-  "version": "0.1.7-rc.2.20261009.3",
+  "version": "0.1.7-rc.2.20261009.5",
   "files": [
     {
-      "url": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.3/laveda-touliu-0.1.7-rc.2.20261009.3-win-x64-unsigned.exe",
-      "sha512": "nUrxgseDcutfP+njHdTt5XUsDcS/E3ufuJKD+UE66MvE85ZaqG0lrKkLlUQ0iytNAL7UJk8CHkpIX84zkG/tqQ==",
-      "size": 322230055
+      "url": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.5/laveda-touliu-0.1.7-rc.2.20261009.5-win-x64-unsigned.exe",
+      "sha512": "ZAV0KOY26HJhh8yEGYvJgHafvE6D0w7DMcx/uGbecahQMs6JN0sx5SNDnJ5NPmRIfWV6YhZ/s6nt9hANrQBiEA==",
+      "size": 322228165
     }
   ],
-  "path": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.3/laveda-touliu-0.1.7-rc.2.20261009.3-win-x64-unsigned.exe",
-  "sha512": "nUrxgseDcutfP+njHdTt5XUsDcS/E3ufuJKD+UE66MvE85ZaqG0lrKkLlUQ0iytNAL7UJk8CHkpIX84zkG/tqQ=="
+  "path": "https://github.com/ryan-flow/laveda-releases/releases/download/v0.1.7-rc.2.20261009.5/laveda-touliu-0.1.7-rc.2.20261009.5-win-x64-unsigned.exe",
+  "sha512": "ZAV0KOY26HJhh8yEGYvJgHafvE6D0w7DMcx/uGbecahQMs6JN0sx5SNDnJ5NPmRIfWV6YhZ/s6nt9hANrQBiEA=="
 }
