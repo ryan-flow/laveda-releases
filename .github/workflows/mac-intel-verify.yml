@@ -1,0 +1,47 @@
+name: Verify LAVEDA Intel installation
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify-installation:
+    if: github.repository == 'ryan-flow/laveda-releases' && github.actor == 'ryan-flow'
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: 下载同一安装镜像并校验
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download mac-intel-0.1.7-rc.2.20261010.3 --repo ryan-flow/laveda-releases --pattern 'laveda-touliu-0.1.7-rc.2.20261010.3-mac-x64-unsigned.dmg' --dir image
+          echo 'ceedd32774e5b4e3783523e36a6432ef7331fcafca0fed36f22fb27e1373e444  image/laveda-touliu-0.1.7-rc.2.20261010.3-mac-x64-unsigned.dmg' | shasum -a 256 --check
+      - name: 从镜像展开应用
+        run: |
+          set -euo pipefail
+          hdiutil attach image/*.dmg -readonly -nobrowse -plist > "$RUNNER_TEMP/mount.plist"
+          mount=$(python3 -c "import plistlib,os;d=plistlib.load(open(os.environ['RUNNER_TEMP']+'/mount.plist','rb'));print(next(x['mount-point'] for x in d['system-entities'] if 'mount-point' in x))")
+          app=$(find "$mount" -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$app"
+          ditto "$app" "$RUNNER_TEMP/Installed LAVEDA.app"
+          hdiutil detach "$mount"
+          installed="$RUNNER_TEMP/Installed LAVEDA.app"
+          exe=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$installed/Contents/Info.plist")
+          test "$(lipo -archs "$installed/Contents/MacOS/$exe")" = x86_64
+          codesign --verify --deep --strict "$installed"
+          echo "VERIFY_EXECUTABLE=$installed/Contents/MacOS/$exe" >> "$GITHUB_ENV"
+      - name: 实际填写登录并等待页面加载完成
+        run: node verification/mac-intel.mjs
+      - name: 保存精简验收结果
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if test -f verification-output/verification-result.json; then
+            gh release upload mac-intel-0.1.7-rc.2.20261010.3 verification-output/verification-result.json verification-output/*-settled.png --repo ryan-flow/laveda-releases
+          fi
