@@ -1,0 +1,129 @@
+name: LAVEDA Mac Intel installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: laveda-mac-intel-installer
+  cancel-in-progress: false
+
+jobs:
+  mac-intel:
+    if: github.repository == 'ryan-flow/laveda-releases' && github.actor == 'ryan-flow'
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+      NODE_OPTIONS: --max-old-space-size=4096
+      LAVEDA_DESKTOP_RELEASE: '1'
+      LAVEDA_RELEASE_VERSION: 0.1.7-rc.2.20261010.3
+      DSH_DESKTOP_BUILD_VERSION: 0.1.7-rc.2.20261010.3
+      DSH_DESKTOP_TARGET_PLATFORM: darwin
+      DSH_DESKTOP_TARGET_ARCH: x64
+      SOURCE_SHA: 2046007b522f4c7eda6ec883896885e8cae58232
+    steps:
+      - name: 读取固定版本的私有源码
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ryan-flow/touliu-harness
+          ref: 2046007b522f4c7eda6ec883896885e8cae58232
+          path: source
+          persist-credentials: false
+          ssh-key: ${{ secrets.LAVEDA_SOURCE_READONLY_SSH }}
+          fetch-depth: 1
+      - name: 配置 pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          package_json_file: source/package.json
+          run_install: false
+      - name: 配置 Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: 配置 Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: 核对源码与原生架构
+        working-directory: source
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(uname -m)" = x86_64
+          node -e "if(process.platform!=='darwin'||process.arch!=='x64')process.exit(1)"
+          echo '源码版本与 Intel 架构核对通过'
+      - name: 安装锁定依赖
+        working-directory: source
+        run: |
+          if ! pnpm install --frozen-lockfile > "$RUNNER_TEMP/laveda-dependencies.log" 2>&1; then
+            echo '::error::锁定依赖安装失败；未公开私有源码日志。'
+            exit 1
+          fi
+      - name: 构建并执行完整包内自检
+        working-directory: source
+        run: |
+          if ! node --import tsx/esm apps/desktop/scripts/package-laveda.ts mac-x64 --fast > "$RUNNER_TEMP/laveda-build.log" 2>&1; then
+            echo '::error::Intel 安装包构建或包内自检失败；未公开私有源码日志。'
+            exit 1
+          fi
+      - name: 验证持久化与桌面功能
+        working-directory: source
+        env:
+          LAVEDA_MATH_TEST_PYTHON: ${{ github.workspace }}/source/apps/desktop/.desktop-build/targets/mac-x64/runtime/primary-runtime/dependencies/python/bin/python3
+        run: |
+          if ! pnpm exec vitest run --maxWorkers=2 apps/desktop/tests/laveda-release.spec.ts apps/desktop/tests/laveda-math-runtime.spec.ts apps/desktop/tests/package-target.spec.ts apps/desktop-host/tests/touliu-sqlite-business-state.spec.ts apps/desktop/tests/login-persistence.spec.ts apps/desktop/tests/update-resume.spec.ts apps/desktop/tests/update-coordinator.spec.ts apps/desktop/tests/update-diagnostics.spec.ts > "$RUNNER_TEMP/laveda-tests.log" 2>&1; then
+            echo '::error::原生回归未通过；不上传安装包。'
+            exit 1
+          fi
+      - name: 原生启动与磁盘镜像验证
+        working-directory: source
+        run: |
+          set -euo pipefail
+          root='apps/desktop/.desktop-build/targets/mac-x64/unsigned-artifacts'
+          app=$(find "$root" -maxdepth 2 -name '*.app' -print -quit)
+          test -n "$app"
+          if ! codesign --verify --deep --strict "$app" > "$RUNNER_TEMP/laveda-signature.log" 2>&1; then
+            echo '::error::应用完整性验证未通过。'
+            exit 1
+          fi
+          if ! node apps/desktop/scripts/smoke-laveda-macos.mjs "$app" release-evidence > "$RUNNER_TEMP/laveda-startup.log" 2>&1; then
+            echo '::error::原生登录或工作台启动未通过。'
+            exit 1
+          fi
+          for dmg in "$root"/*.dmg; do hdiutil verify "$dmg" > "$RUNNER_TEMP/laveda-dmg.log" 2>&1; done
+      - name: 仅收集安装包与明确验收文件
+        working-directory: source
+        run: |
+          GITHUB_SHA="$SOURCE_SHA" python3 scripts/laveda_release_bundle.py collect --target mac-x64 --source apps/desktop/.desktop-build/targets/mac-x64/unsigned-artifacts --output release-platform --evidence release-evidence
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, zipfile
+          root = pathlib.Path('release-platform')
+          data = json.loads((root / 'platform.json').read_text())
+          assert data['commit'] == os.environ['SOURCE_SHA']
+          assert data['version'] == os.environ['LAVEDA_RELEASE_VERSION']
+          assert data['target'] == 'mac-x64'
+          installer = root / data['installer']
+          assert hashlib.sha256(installer.read_bytes()).hexdigest() == data['sha256']
+          allowed = {data['installer'], 'platform.json', 'startup.json', 'workbench.png'}
+          allowed.update(x['name'] for x in data.get('updateAssets', []))
+          assert {p.name for p in root.iterdir()} == allowed
+          with zipfile.ZipFile('../platform-mac-x64.zip', 'w', zipfile.ZIP_STORED) as archive:
+              for p in root.iterdir():
+                  assert p.is_file() and not p.is_symlink()
+                  archive.write(p, p.name)
+          pathlib.Path('../release-notes.md').write_text('LAVEDA ' + data['version'] + ' Mac Intel 受邀测试包。\n\n原生构建、回归、登录启动及DMG校验通过。未完成Developer ID签名与公证；本包未配置在线更新。\n\nSource: ' + data['commit'] + '\n')
+          PY
+      - name: 保存到安装库草稿，等待本机复核
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='mac-intel-0.1.7-rc.2.20261010.3'
+          gh release create "$tag" --repo ryan-flow/laveda-releases --target "$GITHUB_SHA" --draft --prerelease --title 'LAVEDA 20261010.3 Mac Intel' --notes-file release-notes.md
+          gh release upload "$tag" platform-mac-x64.zip source/release-platform/*.dmg source/release-platform/platform.json --repo ryan-flow/laveda-releases
+      - name: 记录完成状态
+        if: always()
+        run: |
+          echo '本流程未上传源码、工作目录、业务数据、密钥、缓存或原始日志。' >> "$GITHUB_STEP_SUMMARY"
+          echo '安装包只有在前述验证通过后才上传到草稿。' >> "$GITHUB_STEP_SUMMARY"
